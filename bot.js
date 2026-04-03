@@ -2,6 +2,8 @@ require("dotenv").config();
 const { Client, GatewayIntentBits } = require("discord.js");
 const axios = require("axios");
 
+const API_URL = "https://tik-api.onrender.com";
+
 const bot = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -10,44 +12,31 @@ const bot = new Client({
   ]
 });
 
+// 🚫 cooldown user
+const cooldown = {};
+
 bot.on("ready", () => {
-  console.log(`🤖 Bot login: ${bot.user.tag}`);
+  console.log(`🤖 ${bot.user.tag}`);
 });
 
 bot.on("messageCreate", async (msg) => {
   if (msg.author.bot) return;
 
+  const now = Date.now();
+  if (cooldown[msg.author.id] && now - cooldown[msg.author.id] < 5000) {
+    return msg.reply("⏳ chậm lại (5s)");
+  }
+  cooldown[msg.author.id] = now;
+
   const args = msg.content.split(" ");
 
-  // 💰 nạp tiền test
-  if (args[0] === "!add") {
-    const amount = parseInt(args[1]);
-    if (!amount) return msg.reply("❌ !add 100");
-
-    try {
-      const res = await axios.post("https://api-buff.onrender.com/addmoney", {
-        user_id: msg.author.id,
-        amount
-      });
-
-      msg.reply(`💰 Balance: ${res.data.balance}`);
-    } catch (e) {
-      msg.reply("⚠️ Lỗi API");
-    }
-  }
-
-  // 🚀 buff
+  // buff
   if (args[0] === "!buff") {
     const link = args[1];
-    const amount = parseInt(args[2]);
-
-    if (!link || !amount) {
-      return msg.reply("❌ !buff link amount");
-    }
+    const amount = args[2];
 
     try {
-      const res = await axios.post("https://api-buff.onrender.com/buff", {
-        user_id: msg.author.id,
+      const res = await axios.post(`${API_URL}/buff`, {
         link,
         amount
       }, {
@@ -57,18 +46,17 @@ bot.on("messageCreate", async (msg) => {
       });
 
       msg.reply(`📦 ${JSON.stringify(res.data)}`);
-    } catch (e) {
-      msg.reply("⚠️ Lỗi buff");
+    } catch {
+      msg.reply("⚠️ lỗi buff");
     }
   }
 
-  // 📊 check
+  // check
   if (args[0] === "!check") {
     const id = args[1];
-    if (!id) return msg.reply("❌ !check order_id");
 
     try {
-      const res = await axios.post("https://api-buff.onrender.com/status", {
+      const res = await axios.post(`${API_URL}/status`, {
         order_id: id
       }, {
         headers: {
